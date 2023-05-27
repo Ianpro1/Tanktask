@@ -1,5 +1,5 @@
 #include <game.h>
-#include <SDL2_rotozoom.h>
+//#include <SDL2_rotozoom.h>
 #include <stdio.h>
 #include <input.h>
 #include <draw.h>
@@ -18,8 +18,8 @@ TankTrouble::TankTrouble(App* app, bool render, float userTimestep, float SDLDel
 	cosTableInit();
 
 	if (render) {
-		initSDL();
-		gameTexture = loadTexture("assets/tanktrouble_raw/game.png");
+		initSDL(app);
+		gameTexture = loadTexture(app, "assets/tanktrouble_raw/game.png");
 		bulletSrc.x = 639;
 		bulletSrc.y = 92;
 		bulletSrc.w = 9;
@@ -42,11 +42,9 @@ TankTrouble::TankTrouble(App* app, bool render, float userTimestep, float SDLDel
 
 	world = new b2World(b2Vec2(0.0f, 0.0f));
 	timeStep = userTimestep;      //the length of time passed to simulate (seconds)
-	velocityIterations = 8;   //how strongly to correct velocity
-	positionIterations = 8;   //how strongly to correct position
 	world->Step(timeStep, velocityIterations, positionIterations);
-	tanks.push_back(new tank(world, 0, 0, 0, render));
-	tanks.push_back(new tank(world, 0, 0, 0, render));
+	tanks.push_back(new tank(app, world, 0, 0, 0, render));
+	tanks.push_back(new tank(app, world, 0, 0, 0, render));
 	pos = new b2Vec2[2];
 
 	if (SDL_render) {
@@ -59,9 +57,7 @@ TankTrouble::TankTrouble(App* app, bool render, float userTimestep, float SDLDel
 	mazeDef.position.Set(0, 0);
 	mazeBody = world->CreateBody(&mazeDef);
 	srand(time(0));
-	map = new mazeSetup(mapSize);
-	bulletMaxVelocity = 4.6;
-	app->reset = 1;
+	map = new mazeSetup(app, mapSize);
 	api = new Api(mapSize, 2);
 }
 
@@ -167,7 +163,7 @@ bool TankTrouble::step(App* app) {
 	internal_time += 1;
 
 	if (SDL_render) {
-		prepareScene();
+		prepareScene(app);
 		//draw tiles
 		for (int i = 0; i < map->rowSize; i++) {
 			for (int k = 0; k < map->rowSize; k++) {
@@ -193,8 +189,6 @@ bool TankTrouble::step(App* app) {
 		for (mazeFix* it : walls) {
 			it->draw(gameTexture);
 		}
-
-		doInput();
 	}
 
 	for (int p = 0; p < tanks.size(); p++) {
@@ -300,8 +294,8 @@ bool TankTrouble::step(App* app) {
 			tanks[p]->body.posRect.x = (pos[p].x - tanks[p]->width * 0.5) * MTOPIXEL;
 			tanks[p]->body.posRect.y = (pos[p].y - tanks[p]->height * 0.5) * MTOPIXEL;
 			tanks[p]->body.angle = angles[p];
-			blit(tanks[p]->bodycolor, tanks[p]->body.posRect, tanks[p]->body.angle, tanks[p]->body.center);
-			blit(tanks[p]->body.texture, tanks[p]->body.posRect, tanks[p]->body.angle, tanks[p]->body.center);
+			blit(app, tanks[p]->bodycolor, tanks[p]->body.posRect, tanks[p]->body.angle, tanks[p]->body.center);
+			blit(app, tanks[p]->body.texture, tanks[p]->body.posRect, tanks[p]->body.angle, tanks[p]->body.center);
 
 			int thisHead = tanks[p]->head_state;
 			float offy;
@@ -323,7 +317,7 @@ bool TankTrouble::step(App* app) {
 
 			tanks[p]->headPosRect[thisHead].x = (pos[p].x - tanks[p]->width * 0.5) * MTOPIXEL + 4;
 			tanks[p]->headPosRect[thisHead].y = (pos[p].y - tanks[p]->height * 0.5) * MTOPIXEL - offy;
-			blit(tanks[p]->headTextures[thisHead], tanks[p]->headPosRect[thisHead], tanks[p]->body.angle, tanks[p]->headCenter[thisHead]);
+			blit(app, tanks[p]->headTextures[thisHead], tanks[p]->headPosRect[thisHead], tanks[p]->body.angle, tanks[p]->headCenter[thisHead]);
 		}
 
 		//handle deaths
@@ -362,7 +356,7 @@ bool TankTrouble::step(App* app) {
 		}
 
 		//circleRGBA(app->renderer, pt.x * MTOPIXEL, pt.y * MTOPIXEL, 1, 0, 0, 255, 1000);
-		presentScene();
+		presentScene(app);
 		SDL_Delay(renderDelay_ms);
 	}
 
@@ -424,6 +418,9 @@ bool TankTrouble::step(App* app) {
 		api->tanksVelXY[i + 2] = vt.y;
 	}
 
+	if(SDL_render)
+		app->doInput();
+
 	if (app->reset) {
 		return 1;
 	}
@@ -447,13 +444,15 @@ std::array<float, 110> TankTrouble::retrieveData() {
 		data[i + (int64_t)40] = api->tanksPosXY[i];
 		data[i + (int64_t)44] = api->tanksVelXY[i];
 	}
+	//tank1 pos X at 40, tank2 posX at 41
+
 	//maze
 	for (int i = 0; i < 30; i++) {
 		data[i + (int64_t)48] = api->horizontalWalls[i];
 		data[i + (int64_t)78] = api->verticalWalls[i];
 	}
-	data[106] = tanks[0]->m_body->GetAngle();
-	data[107] = tanks[1]->m_body->GetAngle();
+	data[108] = tanks[0]->m_body->GetAngle();
+	data[109] = tanks[1]->m_body->GetAngle();
 
 	return data;
 }

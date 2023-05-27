@@ -1,6 +1,5 @@
 #include <structs.h>
-#include <common.h>
-#include <SDL2_gfxPrimitives.h>
+//#include <SDL2_gfxPrimitives.h>
 #include <draw.h>
 #include <defs.h>
 
@@ -73,7 +72,8 @@ Api::~Api() {
 }
 
 //tank
-tank::tank(b2World* world, float x, float y, float rad, bool render) {
+tank::tank(App* appl, b2World* world, float x, float y, float rad, bool render) {
+	app = appl;
 	head_state = 0;
 	regularAmmo = 5;
 	m_world = world;
@@ -107,7 +107,7 @@ tank::tank(b2World* world, float x, float y, float rad, bool render) {
 
 	if (render) {
 		//SDL components
-		body.texture = loadTexture("assets/tanktrouble_raw/tankbody.png");
+		body.texture = loadTexture(app, "assets/tanktrouble_raw/tankbody.png");
 		SDL_Point bodyCenter;
 		bodyCenter.x = 16;
 		bodyCenter.y = 20;
@@ -115,9 +115,9 @@ tank::tank(b2World* world, float x, float y, float rad, bool render) {
 		SDL_QueryTexture(body.texture, NULL, NULL, &body.posRect.w, &body.posRect.h);
 
 		//head default
-		headTextures[0] = loadTexture("assets/tanktrouble_raw/tankhead1.png");
-		headTextures[1] = loadTexture("assets/tanktrouble_raw/tankhead2.png");
-		headTextures[2] = loadTexture("assets/tanktrouble_raw/tankhead3.png");
+		headTextures[0] = loadTexture(app, "assets/tanktrouble_raw/tankhead1.png");
+		headTextures[1] = loadTexture(app, "assets/tanktrouble_raw/tankhead2.png");
+		headTextures[2] = loadTexture(app, "assets/tanktrouble_raw/tankhead3.png");
 		headCenter[0].x = 12;
 		headCenter[0].y = 27;
 		headCenter[1].x = 12;
@@ -128,7 +128,7 @@ tank::tank(b2World* world, float x, float y, float rad, bool render) {
 		SDL_QueryTexture(headTextures[1], NULL, NULL, &headPosRect[1].w, &headPosRect[1].h);
 		SDL_QueryTexture(headTextures[2], NULL, NULL, &headPosRect[2].w, &headPosRect[2].h);
 
-		bodycolor = loadTexture("assets/tanktrouble_raw/tankcolor.png");
+		bodycolor = loadTexture(app, "assets/tanktrouble_raw/tankcolor.png");
 	}
 }
 
@@ -136,20 +136,23 @@ b2Transform tank::GetTransfrom() {
 	return m_body->GetTransform();
 }
 
+/*
 void tank::draw() {
 
 	b2Vec2 pos = m_body->GetPosition();
-	rectangleRGBA(app.renderer, (pos.x - width / 2) * MTOPIXEL, (pos.y - height / 2) * MTOPIXEL, (pos.x + width / 2) * MTOPIXEL, (pos.y + height / 2) * MTOPIXEL, 255, 0, 0, 1000);
+	rectangleRGBA(app->renderer, (pos.x - width / 2) * MTOPIXEL, (pos.y - height / 2) * MTOPIXEL, (pos.x + width / 2) * MTOPIXEL, (pos.y + height / 2) * MTOPIXEL, 255, 0, 0, 1000);
 	//rectangleRGBA(app.renderer, (pos.x - width / 2) * MTOPIXEL, (pos.y - height / 2) * MTOPIXEL, (pos.x + width / 2) * MTOPIXEL, (pos.y + height / 2) * MTOPIXEL, 255, 0, 0, 1000);
 }
-
+*/
 tank::~tank() {
 	m_world->DestroyBody(m_body);
 }
 
+
+/*
 //box
 box::box(int x, int y, int h, int w, float rad, Uint8 red, Uint8 green, Uint8 blue) {
-	texture = loadTexture("assets/tanktrouble_raw/game.png");
+	texture = loadTexture(app, "assets/tanktrouble_raw/game.png");
 	SDL_SetTextureColorMod(texture,red, green, blue);
 	src.x = 149;
 	src.y = 99;
@@ -163,8 +166,8 @@ box::box(int x, int y, int h, int w, float rad, Uint8 red, Uint8 green, Uint8 bl
 
 	angle = rad;
 }
-
-
+*/
+/*
 //player
 player::player(int init_x, int init_y, int init_angle) {
 	//body
@@ -202,7 +205,7 @@ void player::draw() {
 	blit(texture[0], posRect[0], angle, center[0]);
 	blit(texture[1], posRect[1], angle, center[1]);
 }
-
+*/
 
 Bullet::Bullet(b2World* world, int player_id, float x, float y, int currentTimestep, b2Vec2 velocity) {
 
@@ -233,6 +236,7 @@ Bullet::Bullet(b2World* world, int player_id, float x, float y, int currentTimes
 b2Transform Bullet::GetTransform() {
 	return body->GetTransform();
 }
+
 
 Bullet::~Bullet() {
 	m_world->DestroyBody(body);
@@ -305,7 +309,8 @@ mazeWall::mazeWall(std::vector<int> breaks) {
 
 //mazeSetup
 
-mazeSetup::mazeSetup(int size) {
+mazeSetup::mazeSetup(App* appl, int size) {
+	app = appl;
 	rowSize = size;
 	fullsize = size * size;
 	topWalls = new bool[fullsize];
@@ -313,27 +318,27 @@ mazeSetup::mazeSetup(int size) {
 	bottomWalls = new bool[fullsize];
 	leftWalls = new bool[fullsize];
 }
-
+/*
 void mazeSetup::drawTop(int x, int y) {
 
-	rectangleRGBA(app.renderer, x + l / 2 + w, y - l / 2 - w, x - l / 2 - w, y - l / 2, 255, 0, 0, 1000);
+	rectangleRGBA(app->renderer, x + l / 2 + w, y - l / 2 - w, x - l / 2 - w, y - l / 2, 255, 0, 0, 1000);
 }
 
 void mazeSetup::drawBottom(int x, int y) {
 
-	rectangleRGBA(app.renderer, x + l / 2 + w, y + l / 2 + w, x - l / 2 - w, y + l / 2, 255, 0, 0, 1000);
+	rectangleRGBA(app->renderer, x + l / 2 + w, y + l / 2 + w, x - l / 2 - w, y + l / 2, 255, 0, 0, 1000);
 }
 
 void mazeSetup::drawLeft(int x, int y) {
 
-	rectangleRGBA(app.renderer, x - l / 2 - w, y + l / 2 + w, x - l / 2, y - l / 2 - w, 255, 0, 0, 1000);
+	rectangleRGBA(app->renderer, x - l / 2 - w, y + l / 2 + w, x - l / 2, y - l / 2 - w, 255, 0, 0, 1000);
 }
 
 void mazeSetup::drawRight(int x, int y) {
 
-	rectangleRGBA(app.renderer, x + l / 2 + w, y + l / 2 + w, x + l / 2, y - l / 2 - w, 255, 0, 0, 1000);
+	rectangleRGBA(app->renderer, x + l / 2 + w, y + l / 2 + w, x + l / 2, y - l / 2 - w, 255, 0, 0, 1000);
 }
-
+*/
 void mazeSetup::buildMaze(std::vector<mazeWall> maze) {
 
 	for (int i = 0; i < fullsize; i++) {
@@ -491,22 +496,23 @@ std::vector<mazeFix*> mazeSetup::build(b2World* world, std::vector<mazeWall> m_m
 			int cur_y = y + i * (l);
 
 			if (topWalls[rowSize * i + k] == 1) {
-				walls.push_back(new mazeFix(world, cur_x, cur_y-distance, l+w, w));
+				walls.push_back(new mazeFix(app, world, cur_x, cur_y-distance, l+w, w));
 			}
 			if (bottomWalls[rowSize * i + k] == 1) {
-				walls.push_back(new mazeFix(world, cur_x, cur_y + distance, l+w, w));
+				walls.push_back(new mazeFix(app, world, cur_x, cur_y + distance, l+w, w));
 			}
 			if (rightWalls[i * rowSize + k] == 1) {
-				walls.push_back(new mazeFix(world, cur_x + distance, cur_y, w, l+w));
+				walls.push_back(new mazeFix(app, world, cur_x + distance, cur_y, w, l+w));
 			}
 			if (leftWalls[i * rowSize + k] == 1) {
-				walls.push_back(new mazeFix(world, cur_x -distance, cur_y, w, l+w));
+				walls.push_back(new mazeFix(app, world, cur_x -distance, cur_y, w, l+w));
 			}
 		}
 	}
 	return walls;
 }
 
+/*
 void mazeSetup::drawMaze(int x, int y) {
 
 	for (int i = 0; i < rowSize; i++) {
@@ -531,7 +537,7 @@ void mazeSetup::drawMaze(int x, int y) {
 		}
 	}
 }
-
+*/
 mazeSetup::~mazeSetup() {
 	delete topWalls;
 	delete bottomWalls;
@@ -540,8 +546,8 @@ mazeSetup::~mazeSetup() {
 }
 
 
-mazeFix::mazeFix(b2World* world, float x, float y, float w, float h) {
-
+mazeFix::mazeFix(App* appl, b2World* world, float x, float y, float w, float h) {
+	app = appl;
 	pos = b2Vec2(x, y);
 	width = w;
 	height = h;
@@ -559,7 +565,13 @@ mazeFix::mazeFix(b2World* world, float x, float y, float w, float h) {
 void mazeFix::draw(SDL_Texture* gameTexture) {
 	textureDst.x = (pos.x - width / 2 ) * MTOPIXEL;
 	textureDst.y = (pos.y - height / 2) * MTOPIXEL;
-	SDL_RenderCopy(app.renderer, gameTexture, &textureSrc, &textureDst);
+	SDL_RenderCopy(app->renderer, gameTexture, &textureSrc, &textureDst);
 	//rectangleRGBA(app.renderer, (pos.x - width / 2) * MTOPIXEL, (pos.y - height / 2) * MTOPIXEL, (pos.x + width / 2) * MTOPIXEL, (pos.y + height / 2) * MTOPIXEL, 255, 0, 0, 1000);
 	//rectangleRGBA(app.renderer, (pos.x - width / 2) * MTOPIXEL, (pos.y - height / 2) * MTOPIXEL, (pos.x + width / 2) * MTOPIXEL, (pos.y + height / 2) * MTOPIXEL, 255, 0, 0, 1000);
+}
+
+
+App::App(bool userInp) {
+	userInputs = userInp;
+	reset = 1;
 }

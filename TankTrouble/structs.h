@@ -42,12 +42,18 @@ struct Api {
 struct App {
 	SDL_Renderer* renderer;
 	SDL_Window* window;
-	int up[2];
-	int down[2];
-	int left[2];
-	int right[2];
-	int space[2];
+	int up[2] = { 0, 0 };
+	int down[2] = { 0, 0 };
+	int left[2] = { 0, 0 };
+	int right[2] = { 0, 0 };
+	int space[2] = { 0, 0 };
 	int reset;
+	bool userInputs;
+
+	App(bool userInp);
+	void doInput();
+	void doKeyUp(SDL_KeyboardEvent* event);
+	void doKeyDown(SDL_KeyboardEvent* event);
 };
 
 typedef struct {
@@ -63,7 +69,7 @@ typedef struct {
 } Entity;
 
 
-
+/*
 struct player {
 
 	SDL_Point center[2];
@@ -77,8 +83,9 @@ struct player {
 
 	void draw();
 };
+*/
 
-
+/*
 struct box {
 	SDL_Rect src;
 	SDL_Texture* texture;
@@ -88,10 +95,12 @@ struct box {
 	box(int x, int y, int h, int w, float rad, Uint8 red, Uint8 green, Uint8 blue);
 
 };
+*/
 
 class tank {
 public:
 	//body
+	App* app;
 	float width;
 	float height;
 	RotatingEntity body;
@@ -105,8 +114,8 @@ public:
 	b2World* m_world;
 	SDL_Texture* bodycolor;
 
-	tank(b2World* world, float x, float y, float rad, bool render);
-	void draw();
+	tank(App* app, b2World* world, float x, float y, float rad, bool render);
+	//void draw();
 	~tank();
 
 	b2Transform GetTransfrom();
@@ -160,6 +169,7 @@ struct mazeWall {
 
 class mazeFix {
 public:
+	App* app;
 	b2PolygonShape bodyShape;
 	b2FixtureDef bodyFix;
 	SDL_Rect textureSrc;
@@ -169,7 +179,7 @@ public:
 	int type;
 	b2Vec2 pos;
 
-	mazeFix(b2World* world, float x, float y, float w, float h);
+	mazeFix(App* app, b2World* world, float x, float y, float w, float h);
 
 	void draw(SDL_Texture* texture);
 };
@@ -178,7 +188,7 @@ class mazeSetup {
 public:
 	int l = 10;
 	int w = 1;
-
+	App* app;
 	bool* topWalls;
 	bool* leftWalls;
 	bool* rightWalls;
@@ -187,21 +197,21 @@ public:
 	int rowSize;
 	std::vector<int> blocks;
 
-	mazeSetup(int size);
+	mazeSetup(App* app, int size);
 
-	void drawTop(int x, int y);
+	//void drawTop(int x, int y);
 
-	void drawBottom(int x, int y);
+	//void drawBottom(int x, int y);
 
-	void drawLeft(int x, int y);
+	//void drawLeft(int x, int y);
 
-	void drawRight(int x, int y);
+	//void drawRight(int x, int y);
 
 	void buildMaze(std::vector<mazeWall> maze);
 
 	std::vector<mazeFix*> build(b2World* world,std::vector<mazeWall> maze, int x, int y);
 
-	void drawMaze(int x, int y);
+	//void drawMaze(int x, int y);
 
 	~mazeSetup();
 };

@@ -18,8 +18,8 @@ struct TankTrouble {
 	SDL_Rect grayTileDst;
 	b2World* world;
 	float timeStep;      //the length of time passed to simulate (seconds)
-	int32 velocityIterations;   //how strongly to correct velocity
-	int32 positionIterations;   //how strongly to correct position
+	const int32 velocityIterations = 8;   //how strongly to correct velocity
+	const int32 positionIterations = 8;   //how strongly to correct position
 	std::vector<mazeFix*> walls;
 	std::vector<Bullet*> bullets;
 	std::vector<tank*> tanks;
@@ -32,7 +32,7 @@ struct TankTrouble {
 	const int mapSize = 5;
 	std::vector<mazeWall> mazeState;
 	mazeSetup* map;
-	float bulletMaxVelocity;
+	const float bulletMaxVelocity = 4.55;
 	std::vector<int> tiles;
 	Api* api;
 	bool SDL_render;

@@ -1,3 +1,4 @@
 #pragma once
+#include <structs.h>
 
-void doInput(void);
+void doInput(App* app);

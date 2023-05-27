@@ -1,150 +1,154 @@
 #include <SDL.h>
-#include <common.h>
 #include <iostream>
-void doKeyDown(SDL_KeyboardEvent* event)
+#include <input.h>
+
+
+void App::doKeyDown(SDL_KeyboardEvent* event)
 {
 	if (event->repeat == 0)
 	{
 		if (event->keysym.scancode == SDL_SCANCODE_UP)
 		{
-			app.up[0] = 1;
+			up[0] = 1;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_DOWN)
 		{
-			app.down[0] = 1;
+			down[0] = 1;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_LEFT)
 		{
-			app.left[0] = 1;
+			left[0] = 1;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_RIGHT)
 		{
-			app.right[0] = 1;
+			right[0] = 1;
 		}
 
 		//player 2
 		if (event->keysym.scancode == SDL_SCANCODE_W)
 		{
-			app.up[1] = 1;
+			up[1] = 1;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_S)
 		{
-			app.down[1] = 1;
+			down[1] = 1;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_A)
 		{
-			app.left[1] = 1;
+			left[1] = 1;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_D)
 		{
-			app.right[1] = 1;
+			right[1] = 1;
 		}
 
 
 		//other
 		if (event->keysym.scancode == SDL_SCANCODE_BACKSPACE)
 		{
-			app.reset = 1;
+			reset = 1;
 		}
 		if (event->keysym.scancode == SDL_SCANCODE_SPACE) {
-			app.space[0] = 1;
+			space[0] = 1;
 		}
 		if (event->keysym.scancode == SDL_SCANCODE_Q) {
-			app.space[1] = 1;
+			space[1] = 1;
 		}
 	}
 }
 
-void doKeyUp(SDL_KeyboardEvent* event)
+void App::doKeyUp(SDL_KeyboardEvent* event)
 {
 	if (event->repeat == 0)
 	{
 		if (event->keysym.scancode == SDL_SCANCODE_UP)
 		{
-			app.up[0] = 0;
+			up[0] = 0;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_DOWN)
 		{
-			app.down[0] = 0;
+			down[0] = 0;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_LEFT)
 		{
-			app.left[0] = 0;
+			left[0] = 0;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_RIGHT)
 		{
-			app.right[0] = 0;
+			right[0] = 0;
 		}
 
 		//player2
 		if (event->keysym.scancode == SDL_SCANCODE_W)
 		{
-			app.up[1] = 0;
+			up[1] = 0;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_S)
 		{
-			app.down[1] = 0;
+			down[1] = 0;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_A)
 		{
-			app.left[1] = 0;
+			left[1] = 0;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_D)
 		{
-			app.right[1] = 0;
+			right[1] = 0;
 		}
 
 		//other
 		
 		if (event->keysym.scancode == SDL_SCANCODE_SPACE) {
-			app.space[0] = 0;
+			space[0] = 0;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_Q) {
-			app.space[1] = 0;
+			space[1] = 0;
 		}
 
 		if (event->keysym.scancode == SDL_SCANCODE_BACKSPACE)
 		{
-			app.reset = 0;
+			reset = 0;
 		}
 	}
 }
 
-void doInput(void) {
 
-	SDL_Event event;
+void App::doInput() {
+	if (userInputs) {
+		SDL_Event event;
 
-	while (SDL_PollEvent(&event))
-	{
-		switch (event.type)
+		while (SDL_PollEvent(&event))
 		{
-		case SDL_QUIT:
-			exit(0);
-			break;
+			switch (event.type)
+			{
+			case SDL_QUIT:
+				exit(0);
+				break;
 
-		case SDL_KEYDOWN:
-			doKeyDown(&event.key);
-			break;
+			case SDL_KEYDOWN:
+				doKeyDown(&event.key);
+				break;
 
-		case SDL_KEYUP:
-			doKeyUp(&event.key);
-			break;
+			case SDL_KEYUP:
+				doKeyUp(&event.key);
+				break;
 
-		default:
-			break;
+			default:
+				break;
+			}
 		}
 	}
 }

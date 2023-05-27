@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <structs.h>
-void initSDL(void);
+
+void initSDL(App* app);
 double getRand();
 std::vector<mazeWall> InitMaze(int mazeSize);

@@ -1,11 +1,9 @@
 #include <iostream>
-#include <common.h>
 #include <array>
 #include <game.h>
-
+#include <input.h>
+#include <defs.h>
 using namespace std;
-
-App app;
 
 /*
 const int tableSize = 256;
@@ -518,26 +516,6 @@ struct TankTrouble {
 		delete cosTable;
 	}
 };*/
-
-int main(int argc, char* argv[]) {
-
-	App* my_app;
-	my_app = &app;
-	App* other_app = new App();
-
-	TankTrouble tt(my_app, true, 1/24.0, 10);
-	tt.step(my_app);
-	while (1) {
-		bool end = tt.step(my_app);
-		if (end) {
-			std::cout << end;
-			std::cout << "\n";
-		}
-		std::array<float, 110> curData = tt.retrieveData();
-	}
-
-	return 0;
-}
 
 /*
 int main(int argc, char* argv[]) {

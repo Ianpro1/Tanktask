@@ -1,8 +1,0 @@
-#pragma once
-
-#define SCREEN_WIDTH 600 //default 600
-#define SCREEN_HEIGHT 700 //default 700
-#define DEGTORAD 0.0174532925199432957f
-#define RADTODEG 57.295779513082320876f
-#define MTOPIXEL 10
-#define PIXELTOM 0.1
