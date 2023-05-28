@@ -1,4 +1,4 @@
-from . import TanktaskModule as tt
+import Tanktask as tt
 import numpy as np
 
 __all__ = ['DualEnv', 'playEnv']
