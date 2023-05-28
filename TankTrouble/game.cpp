@@ -19,7 +19,7 @@ TankTrouble::TankTrouble(App* app, bool render, float userTimestep, float SDLDel
 
 	if (render) {
 		initSDL(app);
-		gameTexture = loadTexture(app, "assets/tanktrouble_raw/game.png");
+		gameTexture = loadTexture(app, "assets/game.png");
 		bulletSrc.x = 639;
 		bulletSrc.y = 92;
 		bulletSrc.w = 9;

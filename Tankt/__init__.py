@@ -1,5 +1,7 @@
-import Tanktask as tt
+from . import TanktaskModule as tt
 import numpy as np
+
+__all__ = ['DualEnv', 'playEnv']
 
 
 class DualEnv:

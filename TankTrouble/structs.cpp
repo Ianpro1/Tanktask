@@ -107,7 +107,7 @@ tank::tank(App* appl, b2World* world, float x, float y, float rad, bool render) 
 
 	if (render) {
 		//SDL components
-		body.texture = loadTexture(app, "assets/tanktrouble_raw/tankbody.png");
+		body.texture = loadTexture(app, "assets/tankbody.png");
 		SDL_Point bodyCenter;
 		bodyCenter.x = 16;
 		bodyCenter.y = 20;
@@ -115,9 +115,9 @@ tank::tank(App* appl, b2World* world, float x, float y, float rad, bool render) 
 		SDL_QueryTexture(body.texture, NULL, NULL, &body.posRect.w, &body.posRect.h);
 
 		//head default
-		headTextures[0] = loadTexture(app, "assets/tanktrouble_raw/tankhead1.png");
-		headTextures[1] = loadTexture(app, "assets/tanktrouble_raw/tankhead2.png");
-		headTextures[2] = loadTexture(app, "assets/tanktrouble_raw/tankhead3.png");
+		headTextures[0] = loadTexture(app, "assets/tankhead1.png");
+		headTextures[1] = loadTexture(app, "assets/tankhead2.png");
+		headTextures[2] = loadTexture(app, "assets/tankhead3.png");
 		headCenter[0].x = 12;
 		headCenter[0].y = 27;
 		headCenter[1].x = 12;
@@ -128,7 +128,7 @@ tank::tank(App* appl, b2World* world, float x, float y, float rad, bool render) 
 		SDL_QueryTexture(headTextures[1], NULL, NULL, &headPosRect[1].w, &headPosRect[1].h);
 		SDL_QueryTexture(headTextures[2], NULL, NULL, &headPosRect[2].w, &headPosRect[2].h);
 
-		bodycolor = loadTexture(app, "assets/tanktrouble_raw/tankcolor.png");
+		bodycolor = loadTexture(app, "assets/tankcolor.png");
 	}
 }
 

@@ -142,7 +142,7 @@ struct testWindow {
 
 	//static path works but not relative
 	void BlitImage() {
-		SDL_Texture* texture = loadTexture(app, "assets/tanktrouble_raw/tankbody.png");
+		SDL_Texture* texture = loadTexture(app, "assets/tankbody.png");
 		SDL_Rect dst;
 		dst.x = 100;
 		dst.y = 100;
