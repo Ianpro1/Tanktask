@@ -91,10 +91,10 @@ LEARNING_RATE = 1e-4
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class ExperienceSource:
-    def __init__(self, num_envs, act_net, device):
+    def __init__(self,render,  num_envs, act_net, device):
         self.agent = AgentD4PG(act_net, device)
         envs = [makeEnv() for _ in range(num_envs-1)]
-        envs.append(makeEnv(True))
+        envs.append(makeEnv(render))
         self.envs = envs
     
     def __iter__(self):
@@ -119,8 +119,8 @@ class ExperienceSource:
             acts1, _ = self.agent(states1, None)
             acts2, _ = self.agent(states2, None)
 
-            keys1 = acts1 > 0
-            keys2 = acts2 > 0
+            keys1 = acts1 > 0.5
+            keys2 = acts2 > 0.5
 
             keys = np.concatenate((keys1, keys2), axis=1)
 
@@ -166,16 +166,17 @@ if __name__ == "__main__":
     crt_opt = torch.optim.Adam(critic.parameters(), lr =LEARNING_RATE)
     act_opt = torch.optim.Adam(actor.parameters(), lr =LEARNING_RATE)
 
-    exp_source = ExperienceSource(ENV_NUM, actor, device)
+    exp_source = ExperienceSource(False, ENV_NUM, actor, device)
 
     iter_exp = iter(exp_source)
+    render_source = iter(ExperienceSource(True, 1, actor, device))
     history = []    
     idx = 0
 
     buffer = SimpleReplayBuffer(None, REPLAY_SIZE)
 
     while(1):
-        
+        next(render_source)
         if (idx % ENV_NUM == 0):
             his = next(iter_exp)
             for exp in his:
@@ -202,7 +203,6 @@ if __name__ == "__main__":
                 not_dones.append(True)
                 next_states.append(next_state)
         
-
         states = float32_preprocessing(states).to(device)
         actions = float32_preprocessing(actions).to(device)
         next_states = float32_preprocessing(next_states).to(device)

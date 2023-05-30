@@ -419,8 +419,7 @@ bool TankTrouble::step(App* app) {
 		api->tanksVelXY[i + 2] = vt.y;
 	}
 
-	if(SDL_render)
-		app->doInput();
+	app->doInput();
 
 	if (app->reset) {
 		return 1;

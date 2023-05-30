@@ -55,6 +55,10 @@ public:
 
 			if (p2_reward == 1 && p1_reward == 1)
 				throw std::exception("both player received positive rewards.");
+			if (p2_reward == -1 && p1_reward == -1) {
+				p2_reward = 0;
+				p1_reward = 0;
+			}
 		}
 		return std::make_tuple(obs1, p1_reward, obs2, p2_reward, done);
 	}
@@ -103,7 +107,7 @@ public:
 
 int main() {
 
-	Tanktask game(true, true, 1 / 24., 10);
+	Tanktask game(false, true, 1 / 24., 10);
 
 	while (1) {
 		game.silentStep();
