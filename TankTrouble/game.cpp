@@ -103,7 +103,6 @@ bool TankTrouble::step(App* app) {
 		app->reset = 0;
 
 		if (m_seed == -1 || first_time == true) {
-			first_time = false;
 			world->DestroyBody(mazeBody);
 			mazeBody = world->CreateBody(&mazeDef);
 			//init maze
@@ -122,6 +121,7 @@ bool TankTrouble::step(App* app) {
 					break;
 				}
 			}
+
 			//create the array input to describe mazeSetup
 			api->prepareWalls(map->topWalls, map->leftWalls, map->rightWalls, map->bottomWalls);
 
@@ -140,15 +140,24 @@ bool TankTrouble::step(App* app) {
 				}
 			}
 		}
+
+		if (first_time != true && m_seed != -1) {
+			map->blocks.pop_back();
+			map->blocks.pop_back();
+		}
+		first_time = false;
+
 		//set player spawn
+		//angle
+		double prob2 = getRand();
+		float startAngle = prob2 * 2 * M_PI;
+		//position
 		for (int p = 0; p < tanks.size(); p++) {
 
 			tanks[p]->regularAmmo = 5;
 			
-
 			while (1) {
 				double prob = getRand();
-				double prob2 = getRand();
 				int id = floor(prob * map->fullsize);
 
 				if (std::find(map->blocks.begin(), map->blocks.end(), id) != map->blocks.end()) {
@@ -160,8 +169,7 @@ bool TankTrouble::step(App* app) {
 				int x = 8 + k * (map->l);
 				int y = 15 + i * (map->l);
 
-				float startAngle = prob2 * 2 * M_PI;
-				tanks[p]->m_body->SetTransform(b2Vec2(x, y), startAngle);
+				tanks[p]->m_body->SetTransform(b2Vec2(x, y), startAngle + (p * M_PI));
 				map->blocks.push_back(id);
 				break;
 			}

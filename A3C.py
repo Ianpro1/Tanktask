@@ -16,7 +16,7 @@ import time
 Experience = namedtuple("Experience", ["state","action", "reward", "next_state"])
 
 def makeEnv(render : bool = False):
-    return Tankt.DualEnv(False, render, 1/24., 1)
+    return Tankt.DualEnv(False, render, 1/24., 1, False)
 
 ENV_NUM = 30
 INPUT_SIZE = 111
@@ -280,6 +280,6 @@ if __name__ == "__main__":
         loss.backward()
         opt.step()
 
-        if (idx % 1000 == 0):
+        if (idx % 10000 == 0):
             tgt_net.alpha_sync(1-1e-3)
         

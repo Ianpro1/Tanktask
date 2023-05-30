@@ -53,8 +53,6 @@ public:
 				p2_reward = 1.0f;
 			}
 
-			if (p2_reward == 1 && p1_reward == 1)
-				throw std::exception("both player received positive rewards.");
 			if (p2_reward == -1 && p1_reward == -1) {
 				p2_reward = 0;
 				p1_reward = 0;
@@ -107,7 +105,7 @@ public:
 
 int main() {
 
-	Tanktask game(true, true, 1 / 24., 10, 31);
+	Tanktask game(true, true, 1 / 24., 10, 102294801);
 
 	while (1) {
 		game.silentStep();
