@@ -13,7 +13,6 @@ TankTrouble::TankTrouble(App* app, bool render, float userTimestep, float SDLDel
 	renderDelay_ms = SDLDelay_ms;
 	SDL_render = render;
 
-
 	cosTable = new float[tableSize];
 	cosTableInit();
 
@@ -91,6 +90,8 @@ bool TankTrouble::step(App* app) {
 
 	if (app->reset) {
 		internal_time = 0;
+		space_pressed[0].Reset(0);
+		space_pressed[1].Reset(0);
 		theEnd.timer.Reset(0);
 
 		world->DestroyBody(mazeBody);
@@ -230,8 +231,8 @@ bool TankTrouble::step(App* app) {
 
 		//shoot
 		//bullets can clip through wall if tanks are too close
-		if (app->space[p] && tanks[p]->regularAmmo > 0) {
-
+		if (app->space[p] && tanks[p]->regularAmmo > 0 && space_pressed[p].GetTimeSteps(internal_time) > 5) {
+			space_pressed[p].Reset(internal_time);
 			//best solution is to raytrace and look for instakills before shooting
 			b2Vec2 pt = b2Vec2(pos[p].x + 3.5 * sin(angles[p]), pos[p].y - 3.5 * cos(angles[p]));
 			bool insta = false;
@@ -361,7 +362,7 @@ bool TankTrouble::step(App* app) {
 	}
 
 	//handle end
-	if (theEnd.is && theEnd.timer.GetMilliseconds(internal_time, timeStep) > 10) {
+	if (theEnd.is && theEnd.timer.GetSeconds(internal_time, timeStep) > 10) {
 		app->reset = 1;
 	}
 

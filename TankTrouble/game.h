@@ -7,6 +7,7 @@
 #include <set>
 
 struct TankTrouble {
+	Timer space_pressed[2];
 	const int tableSize = 256;
 	float* cosTable;
 	SDL_Texture* gameTexture;

@@ -15,8 +15,8 @@ struct Timer {
 	void Reset(int currentTimestep);
 
 	/// Get the time since construction or the last reset.
-	double GetMilliseconds(int currentTimestep, double timestep);
-
+	double GetSeconds(int currentTimestep, double timestep);
+	int GetTimeSteps(int currentTimestep);
 
 };
 

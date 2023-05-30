@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 /.eggs
 /build
+/TankTrouble/SDL2_image.dll
+/TankTrouble/SDL2.dll
+/Tanktask.egg-info

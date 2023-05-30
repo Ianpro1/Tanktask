@@ -23,7 +23,43 @@ public:
 		game = new TankTrouble(app, enableRender, userTimestep, SDLDelay_ms);
 	}
 
-	std::tuple <std::array<float, 110>, float, float, bool> step(std::array<bool, 10> inputs) {
+	std::tuple <std::array<float, 111>, float, std::array<float, 111>, float, bool> getTuple(std::array<float, 110> obs, bool done) {
+
+		std::array<float, 111> obs1;
+		std::array<float, 111> obs2;
+
+		for (int i = 0; i < obs.size(); i++) {
+			obs1[i] = obs[i];
+			obs2[i] = obs[i];
+		}
+		//add player id
+		obs1[110] = 0;
+		obs2[110] = 1;
+
+		float p1_reward = 0;
+		float p2_reward = 0;
+		if (done) {
+			if (obs[40] < -700) {
+				p1_reward = -1.0f;
+			}
+			else {
+				p1_reward = 1.0f;
+			}
+
+			if (obs[41] < -700) {
+				p2_reward = -1.0f;
+			}
+			else {
+				p2_reward = 1.0f;
+			}
+
+			if (p2_reward == 1 && p1_reward == 1)
+				throw std::exception("both player received positive rewards.");
+		}
+		return std::make_tuple(obs1, p1_reward, obs2, p2_reward, done);
+	}
+
+	std::tuple <std::array<float, 111>, float, std::array<float, 111>, float, bool> step(std::array<bool, 10> inputs) {
 		
 		app->up[0] = inputs[0];
 		app->down[0] = inputs[1];
@@ -40,62 +76,14 @@ public:
 
 		std::array<float, 110> obs = game->retrieveData();
 
-		//x1 at 40, x2 at 41 and x < -700 at death ~-1000
-
-		if (done) {
-			float p1_reward;
-			float p2_reward;
-
-			if (obs[40] < -700) {
-				p1_reward = -1.0f;
-			}
-			else {
-				p1_reward = 1.0f;
-			}
-
-			if (obs[41] < -700) {
-				p2_reward = -1.0f;
-			}
-			else {
-				p2_reward = 1.0f;
-			}
-
-			if (p2_reward == 1 && p1_reward == 1)
-				throw std::exception("both player received positive rewards.");
-
-			return std::make_tuple(obs, p1_reward, p2_reward, true);
-		}
-		return std::make_tuple(obs, 0, 0, false);
+		return getTuple(obs, done);
 	}
 
-	std::tuple <std::array<float, 110>, float, float, bool> silentStep() {
+	std::tuple <std::array<float, 111>, float, std::array<float, 111>, float, bool> silentStep() {
 		int done = game->step(app);
 		std::array<float, 110> obs = game->retrieveData();
 
-		if (done) {
-			float p1_reward;
-			float p2_reward;
-
-			if (obs[40] < -700) {
-				p1_reward = -1.0f;
-			}
-			else {
-				p1_reward = 1.0f;
-			}
-
-			if (obs[41] < -700) {
-				p2_reward = -1.0f;
-			}
-			else {
-				p2_reward = 1.0f;
-			}
-
-			if (p2_reward == 1 && p1_reward == 1)
-				throw std::exception("both player received positive rewards.");
-
-			return std::make_tuple(obs, p1_reward, p2_reward, true);
-		}
-		return std::make_tuple(obs, 0, 0, false);
+		return getTuple(obs, done);
 	}
 
 	void setInput(int player, std::array<bool, 5> inputs) {
@@ -113,6 +101,16 @@ public:
 
 };
 
+int main() {
+
+	Tanktask game(true, true, 1 / 24., 10);
+
+	while (1) {
+		game.silentStep();
+	}
+
+	return 0;
+}
 
 
 struct testWindow {
@@ -174,14 +172,8 @@ struct testWindow {
 	}
 };
 
-//current issue: loadTexture doesn't work relative to running script within interpreter, therefore we need the static path of images
+//current issue: loadTexture doesn't work relative to running script within interpreter, therefore we get the static path of images within interpreter
 
-int main() {
-	testWindow test;
-	while (1) {
-		test.BlitImage();
-	}
-}
 
 //Notes: the user reset button doesn't delete the bullets from map however it does if called from binded step function.
 PYBIND11_MODULE(Tanktask, tt) {

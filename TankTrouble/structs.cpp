@@ -14,10 +14,16 @@ void Timer::Reset(int currentTimestep) {
 	initial_ts = currentTimestep;
 }
 
-double Timer::GetMilliseconds(int currentTimestep, double timeStep) {
+double Timer::GetSeconds(int currentTimestep, double timeStep) {
 
 	int diff = currentTimestep - initial_ts;
 	return timeStep * (double)diff;
+}
+
+int Timer::GetTimeSteps(int currentTimestep) {
+
+	int diff = currentTimestep - initial_ts;
+	return diff;
 }
 
 Api::Api(int mazeSize, int playerCount) {
@@ -244,7 +250,7 @@ Bullet::~Bullet() {
 
 //bullet
 double Bullet::GetLifespan(int internalTime, double timestep) {
-	return lifespan.GetMilliseconds(internalTime,timestep);
+	return lifespan.GetSeconds(internalTime,timestep);
 }
 
 /*
