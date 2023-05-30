@@ -18,9 +18,9 @@ public:
 	TankTrouble* game;
 	App* app;
 
-	Tanktask(bool enableUserInputs, bool enableRender, float userTimestep, float SDLDelay_ms) {
+	Tanktask(bool enableUserInputs, bool enableRender, float userTimestep, float SDLDelay_ms, int seed) {
 		app = new App(enableUserInputs);
-		game = new TankTrouble(app, enableRender, userTimestep, SDLDelay_ms);
+		game = new TankTrouble(app, enableRender, userTimestep, SDLDelay_ms, seed);
 	}
 
 	std::tuple <std::array<float, 111>, float, std::array<float, 111>, float, bool> getTuple(std::array<float, 110> obs, bool done) {
@@ -107,7 +107,7 @@ public:
 
 int main() {
 
-	Tanktask game(false, true, 1 / 24., 10);
+	Tanktask game(true, true, 1 / 24., 10, 31);
 
 	while (1) {
 		game.silentStep();
@@ -183,7 +183,7 @@ struct testWindow {
 PYBIND11_MODULE(Tanktask, tt) {
 
 	py::class_<Tanktask>(tt, "game")
-		.def(py::init<bool, bool, float, float>(), py::arg("enableUserInputs"), py::arg("enableRender"), py::arg("timeStep"), py::arg("SDL_delay"), " Tanktask unwrapped environment. 4 args-> enableUserInputs, enableRender, timeStep and SDL_delay")
+		.def(py::init<bool, bool, float, float, int>(), py::arg("enableUserInputs"), py::arg("enableRender"), py::arg("timeStep"), py::arg("SDL_delay"), py::arg("seed"), " Tanktask unwrapped environment. 4 args-> enableUserInputs, enableRender, timeStep and SDL_delay, seed => -1 is for stochastic maze")
 		/*.def("step", [](Tanktask& tt, py::array_t<bool, py::array::c_style | py::array::forcecast> python_input) {
 		py::buffer_info buffer_info = python_input.request();
 		if (buffer_info.size != 10) {

@@ -8,8 +8,8 @@
 
 using namespace std;
 
-TankTrouble::TankTrouble(App* app, bool render, float userTimestep, float SDLDelay_ms) {
-
+TankTrouble::TankTrouble(App* app, bool render, float userTimestep, float SDLDelay_ms, int seed) {
+	first_time = true;
 	renderDelay_ms = SDLDelay_ms;
 	SDL_render = render;
 
@@ -55,7 +55,13 @@ TankTrouble::TankTrouble(App* app, bool render, float userTimestep, float SDLDel
 	mazeDef.type = b2_staticBody;
 	mazeDef.position.Set(0, 0);
 	mazeBody = world->CreateBody(&mazeDef);
-	srand(time(0));
+	m_seed = seed;
+	if (seed == -1) {
+		srand(time(0));
+	}
+	else {
+		srand(seed);
+	}
 	map = new mazeSetup(app, mapSize);
 	api = new Api(mapSize, 2);
 }
@@ -93,45 +99,47 @@ bool TankTrouble::step(App* app) {
 		space_pressed[0].Reset(0);
 		space_pressed[1].Reset(0);
 		theEnd.timer.Reset(0);
-
-		world->DestroyBody(mazeBody);
-		mazeBody = world->CreateBody(&mazeDef);
 		theEnd.is = false;
 		app->reset = 0;
-		//init maze
-		while (1) {
-			mazeState = InitMaze(mapSize);
-			if (mazeState.empty() != 1) {
-				for (mazeFix* wall : walls) {
-					delete wall;
+
+		if (m_seed == -1 || first_time == true) {
+			first_time = false;
+			world->DestroyBody(mazeBody);
+			mazeBody = world->CreateBody(&mazeDef);
+			//init maze
+			while (1) {
+				mazeState = InitMaze(mapSize);
+				if (mazeState.empty() != 1) {
+					for (mazeFix* wall : walls) {
+						delete wall;
+					}
+					walls.clear();
+					tiles.clear();
+					walls = map->build(world, mazeState, 8, 15);
+					for (int i = 0; i < walls.size(); i++) {
+						mazeBody->CreateFixture(&walls[i]->bodyFix);
+					}
+					break;
 				}
-				walls.clear();
-				tiles.clear();
-				walls = map->build(world, mazeState, 8, 15);
-				for (int i = 0; i < walls.size(); i++) {
-					mazeBody->CreateFixture(&walls[i]->bodyFix);
+			}
+			//create the array input to describe mazeSetup
+			api->prepareWalls(map->topWalls, map->leftWalls, map->rightWalls, map->bottomWalls);
+
+			// init tiles
+			for (int i = 0; i < map->fullsize; i++) {
+				if (std::find(map->blocks.begin(), map->blocks.end(), i) != map->blocks.end()) {
+					tiles.push_back(0);
+					continue;
 				}
-				break;
+				double prob = getRand();
+				if (prob > 0.75) {
+					tiles.push_back(2);
+				}
+				else {
+					tiles.push_back(1);
+				}
 			}
 		}
-		//create the array input to describe mazeSetup
-		api->prepareWalls(map->topWalls, map->leftWalls, map->rightWalls, map->bottomWalls);
-
-		// init tiles
-		for (int i = 0; i < map->fullsize; i++) {
-			if (std::find(map->blocks.begin(), map->blocks.end(), i) != map->blocks.end()) {
-				tiles.push_back(0);
-				continue;
-			}
-			double prob = getRand();
-			if (prob > 0.75) {
-				tiles.push_back(2);
-			}
-			else {
-				tiles.push_back(1);
-			}
-		}
-
 		//set player spawn
 		for (int p = 0; p < tanks.size(); p++) {
 

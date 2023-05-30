@@ -38,11 +38,12 @@ struct TankTrouble {
 	Api* api;
 	bool SDL_render;
 	float renderDelay_ms;
-
+	int m_seed;
 	//need to make internal time for timers
 	float internal_time;
+	bool first_time;
 
-	TankTrouble(App* app, bool render, float userTimestep = 1 / 24.0, float SDLDelay_ms = 10.0);
+	TankTrouble(App* app, bool render, float userTimestep, float SDLDelay_ms, int seed);
 
 	void cosTableInit();
 

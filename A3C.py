@@ -8,91 +8,49 @@ from PR2L import agent as ag
 from PR2L.training import distr_projection
 from PR2L.experience import SimpleReplayBuffer
 from PR2L.agent import float32_preprocessing
-from collections import namedtuple
-
+from collections import namedtuple, deque
+from PR2L import utilities
+from PR2L.rendering import pltprint
+import torch.multiprocessing as mp
+import time
 Experience = namedtuple("Experience", ["state","action", "reward", "next_state"])
-
-class Actor(nn.Module):
-    def __init__(self, inp, out):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(inp, 516),
-            nn.ReLU(),
-            nn.Linear(516, 516),
-            nn.ReLU(),
-            nn.Linear(516, out),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-class Critic(nn.Module):
-    def __init__(self, inp, out):
-        super().__init__()
-        self.max = 1.0
-        self.min = -1.0
-        self.delta = 1.0
-        self.register_buffer("atoms_weight", torch.arange(-1.0, 2.0, 1.0))
-        print(self.atoms_weight)
-        self.obs_net = nn.Sequential(
-            nn.Linear(inp, 516),
-            nn.ReLU(),
-            nn.Linear(516, 516),
-            nn.ReLU(),
-            nn.Linear(516, 516),
-            nn.ReLU(),
-        )
-
-        self.v_net = nn.Sequential(
-            nn.Linear(516 + out, 516),
-            nn.LeakyReLU(),
-            nn.Linear(516, 256),
-            nn.LeakyReLU(),
-            nn.Linear(256, 3),
-        )
-
-    def forward(self, obs, act):
-        hidden = self.obs_net(obs)
-        cat = torch.cat((hidden, act), dim=1)
-        values = self.v_net(cat)
-        return values
-
-    def getExpected(self, logits):
-        e =  F.softmax(logits, dim=1) * self.atoms_weight
-        e = e.sum(dim=1)
-        return e
-
-class AgentD4PG(ag.Agent):
-    def __init__(self, act_net, device="cpu", epsilon=0.3):
-        super().__init__()
-        self.act_net = act_net
-        self.device = device
-        self.epsilon = epsilon
-    
-    @torch.no_grad()
-    def __call__(self, obs, internal_states):
-        states = float32_preprocessing(obs).to(self.device)
-        mu_v = self.act_net(states)
-        actions = mu_v.data.cpu().numpy()
-        actions += self.epsilon * np.random.normal(size=actions.shape)
-        return actions, internal_states
 
 def makeEnv(render : bool = False):
     return Tankt.DualEnv(False, render, 1/24., 1)
 
-BATCH_SIZE = 32
-REPLAY_SIZE = 20000
-ENV_NUM = 40
+ENV_NUM = 30
 INPUT_SIZE = 111
 OUTPUT_SIZE = 5
 GAMMA = 0.99
 LEARNING_RATE = 1e-4
+BETA_ENTROPY = 1.0
+BETA_POLICY = 0.5
+PROCESS_COUNT = 3
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+class A3CAgent(ag.Agent):
+    def __init__(self, net, device):
+        self.net = net
+        self.device = device
+
+    @torch.no_grad()
+    def __call__(self, x, internal_states):
+        x = float32_preprocessing(x).to(self.device)
+        act_v = self.net(x)[0]
+        
+        act_v = act_v.data.cpu().numpy()
+        keys = []
+        for row_v in act_v:
+            
+            rand = np.random.uniform(0., 1., size=len(row_v))
+            k = row_v < rand
+            keys.append(k)
+        return keys, internal_states
+
 class ExperienceSource:
-    def __init__(self,render,  num_envs, act_net, device):
-        self.agent = AgentD4PG(act_net, device)
+    def __init__(self,render, num_envs, act_net1, act_net2, device1, device2):
+        self.agent1 = A3CAgent(act_net1, device1)
+        self.agent2 = A3CAgent(act_net2, device2)
         envs = [makeEnv() for _ in range(num_envs-1)]
         envs.append(makeEnv(render))
         self.envs = envs
@@ -104,8 +62,8 @@ class ExperienceSource:
         next_states1 = []
         next_states2 = []
 
-        history = []
-        
+        history1 = []
+        history2 = []
         for e in self.envs:
             obs1, obs2 = e.reset()
             states1.append(obs1)
@@ -116,13 +74,10 @@ class ExperienceSource:
         reset_obs2 = []
 
         while(1):
-            acts1, _ = self.agent(states1, None)
-            acts2, _ = self.agent(states2, None)
+            acts1, _ = self.agent1(states1, None)
+            acts2, _ = self.agent2(states2, None)
 
-            keys1 = acts1 > 0.5
-            keys2 = acts2 > 0.5
-
-            keys = np.concatenate((keys1, keys2), axis=1)
+            keys = np.concatenate((acts1, acts2), axis=1)
 
             for i, env in enumerate(self.envs):
                 tuple1, tuple2 = env.step(keys[i])
@@ -135,11 +90,13 @@ class ExperienceSource:
                     obs1, obs2 = env.reset()
                     reset_obs1.append(obs1)
                     reset_obs2.append(obs2)
-                    history.extend([exp1, exp2])
+                    history1.append(exp1)
+                    history2.append(exp2)
                 else:
                     exp1 = Experience(states1[i], acts1[i], tuple1[1], tuple1[0])
                     exp2 = Experience(states2[i], acts2[i],tuple2[1], tuple2[0])
-                    history.extend([exp1, exp2])
+                    history1.append(exp1)
+                    history2.append(exp2)
 
             states1 = next_states1.copy()
             states2 = next_states2.copy()
@@ -151,98 +108,178 @@ class ExperienceSource:
             reset_obs1.clear()
             reset_obs2.clear()
             reset_ids.clear()
-            yield history
-            history.clear()
-            
-#this code is for N_STEPS 1
+            yield history1, history2
+            history1.clear()
+            history2.clear()
+
+class ActorCritic(nn.Module):
+    def __init__(self, input_shape, n_actions):
+        super().__init__()
+        self.lin = nn.Sequential(
+            nn.BatchNorm1d(input_shape),
+            nn.Linear(input_shape, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+        )
+        
+        self.value = nn.Sequential(
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1)
+        )
+        
+        self.policy = nn.Sequential(
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, n_actions),
+            nn.Sigmoid()
+        )
+  
+    def forward(self, x):
+        x = self.lin(x)
+        act_v = self.policy(x)
+        value = self.value(x)
+        return act_v, value
+
+def network_reset(layer):
+    if isinstance(layer, (nn.Linear, nn.Conv2d, nn.BatchNorm2d, nn.BatchNorm1d)):
+        layer.reset_parameters()
+    
+def play_env(render, env_number, net1, net2, queue, device1="cpu", device2="cpu"):
+    exp_source = ExperienceSource(render, env_number, net1, net2, device1, device2)
+    minibatch = []
+
+    for his1, his2 in exp_source:
+        
+        minibatch.extend(his1)
+        minibatch.extend(his2)
+        queue.put(minibatch.copy())
+        minibatch.clear()
+
+class BatchGenerator:
+    def __init__(self, exp_queue, PROCESS_COUNT):
+        self.queue = exp_queue
+        self.PROCESS_COUNT = PROCESS_COUNT
+        self.rewards = []
+        self.steps = []
+    
+    def __iter__(self):
+        batch = []
+        idx = 0
+        while True:
+            exp = self.queue.get()         
+            idx +=1
+            batch.extend(exp)
+
+            if idx % self.PROCESS_COUNT == 0:
+                yield batch
+                batch.clear()
+
+
 if __name__ == "__main__":
 
-    actor = Actor(INPUT_SIZE, OUTPUT_SIZE).to(device)
-    critic = Critic(INPUT_SIZE, OUTPUT_SIZE).to(device)
+    exp_queue = mp.Queue(maxsize=PROCESS_COUNT)
+
+    net = ActorCritic(INPUT_SIZE, OUTPUT_SIZE).to(device)
+    tgt_net = ag.TargetNet(net)
+
+    iter_source = iter(BatchGenerator(exp_queue, PROCESS_COUNT))
+
+    process = []
+
+    process.append(mp.Process(target=play_env, args=(True, ENV_NUM, net, tgt_net.target_model, exp_queue, device, device)))
+
+    for _ in range(PROCESS_COUNT-1):
+        process.append(mp.Process(target=play_env, args=(False, ENV_NUM, net, net, exp_queue, device, device)))
+    for p in process:
+        p.start()
     
-    tgt_actor = ag.TargetNet(actor)
-    tgt_critic = ag.TargetNet(critic)
+    opt = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE)
 
-    crt_opt = torch.optim.Adam(critic.parameters(), lr =LEARNING_RATE)
-    act_opt = torch.optim.Adam(actor.parameters(), lr =LEARNING_RATE)
-
-    exp_source = ExperienceSource(False, ENV_NUM, actor, device)
-
-    iter_exp = iter(exp_source)
-    render_source = iter(ExperienceSource(True, 1, actor, device))
-    history = []    
-    idx = 0
-
-    buffer = SimpleReplayBuffer(None, REPLAY_SIZE)
-
+    net.apply(network_reset)
+    tgt_net.sync()
+    time.sleep(1)
+    modelmanager = utilities.ModelBackupManager("A3C", "001", [net])
+    idx = 0 
+    plot = pltprint(color="red", alpha = 0.4)
     while(1):
-        next(render_source)
-        if (idx % ENV_NUM == 0):
-            his = next(iter_exp)
-            for exp in his:
-                buffer._add(exp)
-        if (len(buffer) < 10000):
-            continue
-            
+        idx += 1
+        if (idx % 100 == 0):
+            print(idx)
+        if (idx % 100000 == 0):
+            modelmanager.save()
+
+        history = next(iter_source)
+
         states = []
         rewards = []
         actions = []
         next_states = []
         not_dones = []
-
-        history = buffer.sample(BATCH_SIZE)
-
         for exp in history:
-            state, action, reward, next_state = exp
-            states.append(state)
-            actions.append(action)
-            rewards.append(reward)
-            if (next_state is None):
+            states.append(exp.state)
+            actions.append(exp.action)
+            rewards.append(exp.reward)
+            if (exp.next_state is None):
                 not_dones.append(False)
             else:
                 not_dones.append(True)
-                next_states.append(next_state)
+                next_states.append(exp.next_state)
         
         states = float32_preprocessing(states).to(device)
+        #expect actions as bool not float!
         actions = float32_preprocessing(actions).to(device)
-        next_states = float32_preprocessing(next_states).to(device)
         rewards = float32_preprocessing(rewards).to(device)
+        next_states = float32_preprocessing(next_states).to(device)
         not_dones = np.array(not_dones, copy=False)
-        #critic loss: log(q(x))p(x)
-        crt_opt.zero_grad()
-        q_v = critic(states, actions)
-        logprob_q_v = F.log_softmax(q_v, dim=1)
+
+        #loss in 3 parts : MSE, REINFORCE, entropy
+        with torch.no_grad():
+            if (len(next_states) > 0):
+                next_refs_q_v = torch.zeros_like(rewards)
+                q_v = net(next_states)[1].squeeze(-1)
+                next_refs_q_v[not_dones] = q_v
+
+                refs_q_v = rewards + next_refs_q_v * GAMMA
+            else:
+                refs_q_v = rewards
+
+        refs_q_v = refs_q_v.unsqueeze(-1)
+        opt.zero_grad()
+
+        acts, values = net(states)
+
+        if (idx % 10 == 0):    
+            a = acts.data.cpu().numpy()
+            plot.drawbuffer(a[0])
+
+        values = values
+        mse_loss = F.mse_loss(refs_q_v, values)
         
-        if len(next_states) > 0:
-            next_acts = tgt_actor.target_model(next_states)
-            next_q_v = tgt_critic.target_model(next_states, next_acts)
+        #get the complementary probabilities
+        p_a = actions - acts
+        p_a = torch.absolute(p_a)
+        logprob_a = torch.log10(p_a)
 
-            next_dist_q_v = F.softmax(next_q_v, dim=1)
-        else:
-            next_dist_q_v = torch.Tensor([])
+        adv = refs_q_v - values.detach()
 
-        refs_dist_q_v = distr_projection(next_dist_q_v, rewards, not_dones, GAMMA, 3, 1.0, -1.0, 1.0, device)
+        policy_loss = -(logprob_a * adv).sum(dim=1).mean()
+        
+        variance_loss = F.mse_loss(acts.mean(), torch.tensor(0.5).to(device))
 
-        crt_loss = -(refs_dist_q_v * logprob_q_v)
-        crt_loss = crt_loss.sum(dim=1).mean()
-        crt_loss.backward()
+        loss = BETA_ENTROPY * variance_loss + mse_loss + BETA_POLICY * policy_loss
+        loss.backward()
+        opt.step()
 
-        #perform step
-        crt_opt.step()
-
-        #actor loss: -E(x)
-
-        act_opt.zero_grad()
-
-        acts = actor(states)
-        q_v = critic(states, acts)
-        e_v = critic.getExpected(q_v)
-        act_loss = -e_v.mean()
-        act_loss.backward()
-        act_opt.step()
-
-        tgt_actor.alpha_sync(alpha=1-1e-3)
-        tgt_critic.alpha_sync(alpha=1-1e-3)
-        idx += 1
-        if (idx % 100 == 0):
-            print(idx)
+        if (idx % 1000 == 0):
+            tgt_net.alpha_sync(1-1e-3)
+        

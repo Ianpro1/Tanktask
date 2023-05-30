@@ -8,8 +8,12 @@ class DualEnv:
     A more user-friendly interface than the tt.game class with standard functions such as step and reset
     as well as catInputs : to concatenate both player's input numpy arrays.
     """
-    def __init__(self, enableUserInputs : bool, render : bool, timeStep : float, SDL_render : float):
-        self.game = tt.game(enableUserInputs, render, timeStep, SDL_render)
+    def __init__(self, enableUserInputs : bool, render : bool, timeStep : float, SDL_render : float, maze_randomized : bool, seed : int = 31):
+        
+        if (maze_randomized):
+            self.game = tt.game(enableUserInputs, render, timeStep, SDL_render, -1)
+        else:
+            self.game = tt.game(enableUserInputs, render, timeStep, SDL_render, seed)
     
     def step(self, x) -> tuple[tuple[tuple, float, bool], tuple[tuple, float, bool]]:
         """
