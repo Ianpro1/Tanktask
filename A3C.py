@@ -12,6 +12,8 @@ from collections import namedtuple, deque
 from PR2L import utilities
 from PR2L.rendering import pltprint
 import torch.multiprocessing as mp
+import matplotlib.pyplot as plt
+import pandas as pd
 import time
 Experience = namedtuple("Experience", ["state","action", "reward", "next_state"])
 
@@ -23,9 +25,8 @@ INPUT_SIZE = 111
 OUTPUT_SIZE = 5
 GAMMA = 0.99
 LEARNING_RATE = 1e-4
-BETA_ENTROPY = 1.0
-BETA_POLICY = 0.5
 PROCESS_COUNT = 3
+CLIP_GRAD = 0.1
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class A3CAgent(ag.Agent):
@@ -76,7 +77,6 @@ class ExperienceSource:
         while(1):
             acts1, _ = self.agent1(states1, None)
             acts2, _ = self.agent2(states2, None)
-
             keys = np.concatenate((acts1, acts2), axis=1)
 
             for i, env in enumerate(self.envs):
@@ -116,7 +116,6 @@ class ActorCritic(nn.Module):
     def __init__(self, input_shape, n_actions):
         super().__init__()
         self.lin = nn.Sequential(
-            nn.BatchNorm1d(input_shape),
             nn.Linear(input_shape, 512),
             nn.ReLU(),
             nn.Linear(512, 512),
@@ -141,6 +140,7 @@ class ActorCritic(nn.Module):
             nn.Linear(512, 256),
             nn.ReLU(),
             nn.Linear(256, n_actions),
+            nn.ReLU(),
             nn.Sigmoid()
         )
   
@@ -187,60 +187,78 @@ class BatchGenerator:
 
 if __name__ == "__main__":
 
-    exp_queue = mp.Queue(maxsize=PROCESS_COUNT)
+    #mp.set_start_method("spawn")
+    #exp_queue = mp.Queue(maxsize=PROCESS_COUNT)
 
     net = ActorCritic(INPUT_SIZE, OUTPUT_SIZE).to(device)
+    #net.share_memory()
     tgt_net = ag.TargetNet(net)
+    #iter_source = iter(BatchGenerator(exp_queue, PROCESS_COUNT))
 
-    iter_source = iter(BatchGenerator(exp_queue, PROCESS_COUNT))
+    #process = []
+    #process.append(mp.Process(target=play_env, args=(True, ENV_NUM, net, tgt_net.target_model, exp_queue, device, device)))
 
-    process = []
-
-    process.append(mp.Process(target=play_env, args=(True, ENV_NUM, net, tgt_net.target_model, exp_queue, device, device)))
-
-    for _ in range(PROCESS_COUNT-1):
-        process.append(mp.Process(target=play_env, args=(False, ENV_NUM, net, net, exp_queue, device, device)))
-    for p in process:
-        p.start()
+    #for _ in range(PROCESS_COUNT-1):
+    #    process.append(mp.Process(target=play_env, args=(False, ENV_NUM, net, tgt_net.target_model, exp_queue, device, device)))
+    #for p in process:
+    #    p.start()
     
     opt = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE)
+    
+    #net.apply(network_reset)
+    #tgt_net.sync()
 
-    net.apply(network_reset)
-    tgt_net.sync()
-    time.sleep(1)
     modelmanager = utilities.ModelBackupManager("A3C", "001", [net])
     idx = 0 
-    plot = pltprint(color="red", alpha = 0.4)
+    plot = pltprint(ylim = None, color="red", alpha = 0.3, delay=0.1)
+
+    for params in net.parameters():
+        print(params.data.cpu().numpy())
+    for params in tgt_net.target_model.parameters():
+        print(params.data.cpu().numpy())
+
+    iter_source = iter(ExperienceSource(False, 120, net, tgt_net.target_model, device, device))
+    render_source = iter(ExperienceSource(True, 1, net, tgt_net.target_model, device, device))
     while(1):
+        
         idx += 1
         if (idx % 100 == 0):
             print(idx)
+ 
         if (idx % 100000 == 0):
             modelmanager.save()
 
-        history = next(iter_source)
+        history = []
+        his1, his2 = next(iter_source)
+        history = []
+        history.extend(his1)
+        history.extend(his2)
+        next(render_source)
 
-        states = []
-        rewards = []
-        actions = []
-        next_states = []
-        not_dones = []
+        states_ = []
+        rewards_ = []
+        actions_ = []
+        next_states_ = []
+        not_dones_ = []
         for exp in history:
-            states.append(exp.state)
-            actions.append(exp.action)
-            rewards.append(exp.reward)
+            states_.append(exp.state)
+            actions_.append(exp.action)
+            rewards_.append(exp.reward)
             if (exp.next_state is None):
-                not_dones.append(False)
+                not_dones_.append(False)
             else:
-                not_dones.append(True)
-                next_states.append(exp.next_state)
-        
-        states = float32_preprocessing(states).to(device)
+                not_dones_.append(True)
+                next_states_.append(exp.next_state)
+
+    
+        states = float32_preprocessing(states_).to(device)
         #expect actions as bool not float!
-        actions = float32_preprocessing(actions).to(device)
-        rewards = float32_preprocessing(rewards).to(device)
-        next_states = float32_preprocessing(next_states).to(device)
-        not_dones = np.array(not_dones, copy=False)
+        actions = float32_preprocessing(actions_).to(device)
+        rewards = float32_preprocessing(rewards_).to(device)
+        
+        next_states = float32_preprocessing(next_states_).to(device)
+        not_dones = np.array(not_dones_, copy=False)
+
 
         #loss in 3 parts : MSE, REINFORCE, entropy
         with torch.no_grad():
@@ -258,16 +276,12 @@ if __name__ == "__main__":
 
         acts, values = net(states)
 
-        if (idx % 10 == 0):    
-            a = acts.data.cpu().numpy()
-            plot.drawbuffer(a[0])
-
         values = values
         mse_loss = F.mse_loss(refs_q_v, values)
         
         #get the complementary probabilities
-        p_a = actions - acts
-        p_a = torch.absolute(p_a)
+        p_a_ = actions - acts
+        p_a = torch.absolute(p_a_)
         logprob_a = torch.log10(p_a)
 
         adv = refs_q_v - values.detach()
@@ -276,10 +290,18 @@ if __name__ == "__main__":
         
         variance_loss = F.mse_loss(acts.mean(), torch.tensor(0.5).to(device))
 
-        loss = BETA_ENTROPY * variance_loss + mse_loss + BETA_POLICY * policy_loss
+        loss =  mse_loss + 0.5 * policy_loss
+        
         loss.backward()
+
+        if (idx % 10 == 0):
+            a = acts.data.cpu().numpy()
+            plot.drawbuffer(a[0])
+            print(loss.item())        
+        
+        nn.utils.clip_grad_norm_(net.parameters(), CLIP_GRAD)
         opt.step()
 
-        if (idx % 10000 == 0):
-            tgt_net.alpha_sync(1-1e-3)
+        if (idx % 100 == 0):
+            tgt_net.alpha_sync(0.99)
         

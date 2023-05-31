@@ -42,6 +42,7 @@ struct TankTrouble {
 	//need to make internal time for timers
 	float internal_time;
 	bool first_time;
+	bool selfkill[2] = { false, false };
 
 	TankTrouble(App* app, bool render, float userTimestep, float SDLDelay_ms, int seed);
 

@@ -57,7 +57,17 @@ public:
 				p2_reward = 0;
 				p1_reward = 0;
 			}
+
+			if (game->selfkill[0])
+				p1_reward -= 1;
+
+			if (game->selfkill[1])
+				p1_reward -= 1;
 		}
+
+		float punishment = game->internal_time * 0.00001;
+		p1_reward -= punishment;
+		p2_reward -= punishment;
 		return std::make_tuple(obs1, p1_reward, obs2, p2_reward, done);
 	}
 

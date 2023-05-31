@@ -155,7 +155,8 @@ bool TankTrouble::step(App* app) {
 		for (int p = 0; p < tanks.size(); p++) {
 
 			tanks[p]->regularAmmo = 5;
-			
+			selfkill[p] = false;
+
 			while (1) {
 				double prob = getRand();
 				int id = floor(prob * map->fullsize);
@@ -347,6 +348,9 @@ bool TankTrouble::step(App* app) {
 						theEnd.timer.Reset(internal_time);
 						tanks[p]->m_body->SetTransform(b2Vec2(-1000, -1000), 0);
 						bulletScheduledForRemoval.insert(b);
+						if (b->id == p) {
+							selfkill[p] = true;
+						}
 						break;
 					}
 				}
